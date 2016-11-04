@@ -130,6 +130,10 @@ def _clear_list(ll):
         ll.clear()
 
 
+def _raise_e(e):
+    raise e
+
+
 def _python_exit():
     global _shutdown
     _shutdown = True
@@ -202,6 +206,27 @@ class _CallItem(object):
         self.fn = fn
         self.args = args
         self.kwargs = kwargs
+
+    def __reducer__(self):
+        try:
+            s_args = LokyPickler.dumps((self.fn, self.args, self.kwargs))
+            return self._rebuild, (False, self.work_id, s_args)
+        except Exception as e:
+            s_args = LokyPickler.dumps((self.fn, self.args, self.kwargs))
+            return self._rebuild, (True, self.work_id, s_exc)
+
+    @staticmethod
+    def _rebuild(exc, work_id, s_args):
+        try:
+            args = LokyPickler.loads(s_args)
+        except Exception as e:
+            args = _ExceptionWithTraceback(e, getattr(e, "__traceback__",
+                                                      None))
+            exc = True
+        if exc:
+            return _CallItem(work_id, _raise_e, args, {})
+        else:
+            return _CallItem(work_id, *args)
 
     def __repr__(self):
         return "CallItem({}, {}, {}, {})".format(
