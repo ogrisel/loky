@@ -11,7 +11,7 @@ AUXFILE=.aux$ver
 DEADLOCK=.exit_on_lock
 
 $PYTHON --version
-coverage run --parallel-mode -m pytest -vs 2>$AUXFILE
+coverage run -m pytest -vs 2>$AUXFILE
 coverage combine
 res_test=$?
 [ $res_test -ne 0 ] &&cat $AUXFILE
