@@ -1,3 +1,4 @@
+import psutil
 try:
     import test.support
 
@@ -471,3 +472,42 @@ class ExecutorTest:
             else:
                 patience -= 1
                 time.sleep(0.01)
+
+    @classmethod
+    def active_workers_pids(cls):
+        p = psutil.Process()
+        all_children = [(c, " ".join(p.cmdline())) for c in p.children()]
+        workers = [c for c, cmdline in all_children
+                   if ('semaphore_tracker' not in cmdline and
+                       'forkserver' not in cmdline)]
+
+        forkservers = [c for c, cmdline in all_children
+                       if 'forkserver' in cmdline]
+        for fs in forkservers:
+            workers.extend(fs.children())
+        return {w.pid for w in workers if w.is_running()}
+
+    def test_worker_timeout(self):
+        self.executor.shutdown(wait=True)
+        assert len(self.active_workers_pids()) == 0
+
+        try:
+            self.executor = self.executor_type(
+                max_workers=4, context=self.context,
+                timeout=1)
+        except NotImplementedError as e:
+            self.skipTest(str(e))
+
+        # Trigger worker spawn for lazy executors
+        for result in self.executor.map(id, range(8)):
+            pass
+        assert len(self.active_workers_pids()) == 4
+
+        # Let's wait a bit for the worker timeout to kick-in
+        time.sleep(3)
+        assert len(self.active_workers_pids()) == 0
+
+        # Resubmitting new jobs should spawn new worker processes transparently
+        for result in self.executor.map(id, range(8)):
+            pass
+        assert len(self.active_workers_pids()) == 4

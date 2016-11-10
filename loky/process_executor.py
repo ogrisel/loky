@@ -388,7 +388,8 @@ def _queue_management_worker(executor_reference,
                 ready = wait([reader], timeout=_timeout_poll)
                 if count == 10:
                     count = 0
-                    ready += [p for p in processes.values() if not p.is_alive()]
+                    ready += [p for p in processes.values()
+                              if not p.is_alive()]
             else:
                 sentinels = [p.sentinel for p in processes.values()]
                 ready = wait([reader] + sentinels, timeout=_timeout_poll)
@@ -519,8 +520,8 @@ def _management_worker(executor_reference, queue_management_thread, processes,
             _shutdown_crash(executor_reference, processes, pending_work_items,
                             call_queue, BrokenExecutor(
                                 "The QueueFeederThread was terminated abruptly"
-                                " while feeding a new job. This is due to a "
-                                "job pickling error."
+                                " while feeding a new job. This can be due to "
+                                "a job pickling error."
                             ))
             return
         executor = executor_reference()
